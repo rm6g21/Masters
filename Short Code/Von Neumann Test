@@ -1,0 +1,58 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from qutip import *
+
+def H(alpha,A,w_cav,w_field,N):
+    
+    #define single photon coupling
+    g = A/np.abs(alpha)
+    
+    #define operators, field | cavity system ordering
+    a = tensor(destroy(N),qeye(2))
+    sigma_z = tensor(qeye(N),sigmaz())
+    sigma_x = tensor(qeye(N),sigmax())
+    
+    #Hamiltonian Components
+    
+    H_cav = 0.5*w_cav*sigma_z
+    
+    H_field = w_field*a.dag()*a
+    
+    H_inter = g*sigma_x*(a.dag()+a)
+    
+    return H_cav + H_field + H_inter
+
+#define constants to be used
+
+alpha = 5000+3j
+A = 1
+N=10
+Ham = H(alpha,A,1,1,N)
+psi0 = tensor(coherent(N,alpha),fock(2,1))
+tlist = np.linspace(0,10000,1000)
+
+#evolve state
+output = mesolve(Ham,psi0,tlist)
+
+#empty lists for von neumann entropy to be added
+
+ent_field = []
+ent_atom = []
+
+for i in range(len(tlist)):
+    
+    #calculate von neumann entropies for both atom and field
+    #use partial trace to form subsystems
+
+    ent_field_v = entropy_vn(ket2dm(output.states[i]).ptrace(0))
+    ent_atom_v = entropy_vn(ket2dm(output.states[i]).ptrace(1))
+    ent_field.append(ent_field_v)
+    ent_atom.append(ent_atom_v)
+    
+
+#quick plot to visually check behaviour, no labels  
+plt.plot(tlist,ent_field)
+plt.plot(tlist,ent_atom,ls='--',color='red')
+plt.show()
+    
+#print(ent)
